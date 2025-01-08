@@ -1,0 +1,2 @@
+/usr/bin/ar qc libigdb.a CMakeFiles/libigdb.dir/libigdb.cpp.o
+/usr/bin/ranlib libigdb.a

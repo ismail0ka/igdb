@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/igdb.dir/link.d CMakeFiles/igdb.dir/igdb.cpp.o -o igdb  ../src/libigdb.a /usr/lib/libreadline.so
