@@ -21,6 +21,6 @@ int	main(int argc, char **argv){
 		
 		Debugger gdb{prog, pid};
 		
-		gdb.run()
+		gdb.run();
 	}
 }

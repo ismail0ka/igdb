@@ -1,5 +1,7 @@
 #include <libigdb/libigdb.hpp>
 #include <iostream>
+#include <vector>
+#include <sstream>
 #include <unistd.h>
 #include <sys/ptrace.h>
 #include <sys/wait.h>
@@ -9,7 +11,55 @@
 #include <readline/history.h>
 
 namespace {
-	void	handle_command(pid_t pid, std::string_view line);
+	std::vector<std::string>	split(std::string_view str, char delimiter){
+		std::vector<std::string>	result{};
+		std::stringstream			ss{std::string{str}};
+		std::string					token;
+
+		while ((std::getline(ss, token, delimiter)))
+			result.push_back(token);
+		return (result);
+	}
+
+	bool is_prefix(std::string_view str, std::string_view of){
+		if (str.size() > of.size())
+			return (false);
+		return (std::equal(str.begin(), str.end(), of.begin()));
+	}
+
+	void	resume(pid_t pid){
+		if (ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1)
+		{
+			std::cerr << "Could not resume process" << std::endl;
+			std::exit(-1);
+		}
+	}
+
+	void	wait_on_signal(pid_t pid){
+		int	status;
+		int	options;
+
+		if (waitpid(pid, &status, options) == -1)
+		{
+			std::perror("Waiting on child process failed");
+			std::exit(-1);
+		}
+	}
+	void	handle_command(pid_t pid, std::string_view line)
+	{
+		auto args = split(line, ' ');
+		auto cmd = args[1];
+
+		if (is_prefix(cmd, "continue"))
+		{
+			resume(pid);
+			wait_on_signal(pid);
+		}
+		else
+		{
+			std::cerr << "Unknown Command " << cmd << std::endl;
+		}
+	}
 	pid_t	attach(int argc, const char **argv)
 	{
 		pid_t	pid;
@@ -33,12 +83,13 @@ namespace {
 		{
 			const char	*program_path = argv[1];
 
-			if ((pid = fork()) == -1)
+			pid = fork();
+			if (pid == -1)
 			{
 				std::perror("Failed to fork");
 				return (-1);
 			}
-			if ((pid = fork()) == 0)
+			if (pid == 0)
 			{
 				//We are in child process
 				if (ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) == -1)
@@ -68,7 +119,8 @@ int main(int argc, const char **argv)
 	{
 		std::cerr << "No Arguments Passed" << std::endl;
 		std::cerr << "Usage: " << argv[0] << " <pid>" << std::endl;
-		std::cerr << "Or Attach to already running process\n" << argv[0] << "-p <process_pid>" << std::endl;
+		std::cerr << "Or Attach to already running process\n" << argv[0] << " -p <process_pid>" << std::endl;
+		std::exit(0);
 	}
 	pid = attach(argc, argv);
 	options = 0;
@@ -79,7 +131,7 @@ int main(int argc, const char **argv)
 	}
 
 	line = nullptr;
-	while ((line = readline("igdb> ")) != nullptr)
+	while ((line = readline("igdb>")) != nullptr)
 	{
 		std::string_view	line_view;
 
